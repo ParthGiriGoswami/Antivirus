@@ -25,7 +25,7 @@ def on_folder_picked_for_quick_scan(e: ft.FilePickerResultEvent, page: ft.Page,r
         if scanned:
             Scan(page,quickfiles,exclusionfiles,rule,False)
 def HomeView(page: ft.Page,rule,quickfiles,quickpath,exclusionfiles):
-    file_picker_for_quick_scan = ft.FilePicker(on_result=lambda e: on_folder_picked_for_quick_scan(e, page,rule,quickfiles,quickpath))
+    file_picker_for_quick_scan = ft.FilePicker(on_result=lambda e: on_folder_picked_for_quick_scan(e, page,rule,quickfiles,quickpath,exclusionfiles))
     page.overlay.append(file_picker_for_quick_scan)
     btn1 = ft.ElevatedButton(
         "Quick scan",
