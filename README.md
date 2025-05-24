@@ -1,2 +1,4 @@
-To run first navigate to this project and run pip install -r requirement.txt
-Then type flet run
+To run the app open your anaconda prompt and type
+pip install -r requirements.txt
+Then navigate to this directory and write
+flet run
