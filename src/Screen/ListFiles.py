@@ -197,6 +197,7 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
                                    alignment=ft.MainAxisAlignment.CENTER,
                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         actions = [select_all_button, add_button, remove_button] if idp == "Result" else [remove, select_all_button, ft.TextButton("Add", on_click=add)]
+
     cont = ft.Container(width=page.width, height=500, content=content_column)
     bs = ft.AlertDialog(
         modal=True,
