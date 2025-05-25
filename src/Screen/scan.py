@@ -14,16 +14,8 @@ def Scan(page: ft.Page, scanned,exclusionfiles,rule,flag):
         alignment=ft.alignment.center,
         content=ft.Stack(
             controls=[
-                ft.Container(
-                    content=progress,
-                    width=300,
-                    height=300,
-                    border_radius=150
-                ),
-                ft.Container(
-                    content=info,
-                    alignment=ft.alignment.center
-                ),
+                ft.Container(content=progress,width=300,height=300,border_radius=150),
+                ft.Container(content=info,alignment=ft.alignment.center),
             ]
         )
     )
@@ -42,8 +34,4 @@ def Scan(page: ft.Page, scanned,exclusionfiles,rule,flag):
     bs = ft.AlertDialog(modal=True,title=ft.Text("Scanning",size=20, weight=ft.FontWeight.BOLD),content=cont,actions=None)
     page.open(bs)
     page.update()
-    threading.Thread(
-        target=scan_drives,
-        args=(page,txt,info,count,scanned,progress,malware_count,rule,bs,flag,exclusionfiles),
-        daemon=True
-    ).start()
+    threading.Thread(target=scan_drives,args=(page,txt,info,count,scanned,progress,malware_count,rule,bs,flag,exclusionfiles),daemon=True).start()
