@@ -59,15 +59,15 @@ def verify_yourself(page: ft.Page, idx: str):
                 close_dialog()
                 show_reset_pin_dialog(salt)
             else:
-                answer_field.error_text = "Incorrect answer"
+                answer_field.error_text="Incorrect answer"
                 page.update()
         bs.title=ft.Text("Answer Security Question")
         bs.content=ft.Column([
-                ft.Text(f"Security Question: {question_text}"),
+                ft.Text(f"Security Question:{question_text}"),
                 answer_field
             ], height=70)
         bs.actions=[
-                ft.TextButton("Submit", on_click=verify_answer),
+                ft.TextButton("Submit",on_click=verify_answer),
                 ft.TextButton("Cancel", on_click=lambda e: close_dialog())
             ]
         page.open(bs)
@@ -83,16 +83,15 @@ def verify_yourself(page: ft.Page, idx: str):
             npin, cpin = new_pin.value.strip(), confirm_pin.value.strip()
             valid = True
             if len(npin) != 4 or not npin.isdigit():
-                new_pin.error_text = "PIN must be 4 digits"
+                new_pin.error_text="PIN must be 4 digits"
                 valid = False
             else:
-                new_pin.error_text = None
-
-            if npin != cpin:
-                confirm_pin.error_text = "PINs do not match"
+                new_pin.error_text=None
+            if npin!=cpin:
+                confirm_pin.error_text="PINs do not match"
                 valid = False
             else:
-                confirm_pin.error_text = None
+                confirm_pin.error_text=None
 
             if not valid:
                 page.update()
