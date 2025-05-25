@@ -14,10 +14,11 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
     remove_button = ft.TextButton("Remove", disabled=True)
     prev_button = ft.ElevatedButton("Previous")
     next_button = ft.ElevatedButton("Next")
+    info=ft.TextButton("")
     remove = ft.TextButton(f"Remove From {idp}", disabled=True)
     select_all_button = ft.TextButton("Select All")
     icon = ft.Icon(ft.Icons.CLOSE, color=ft.Colors.RED, size=200) if idp == "Result" else None
-    files = ft.Text(f"{len(path)} files found", size=20) if idp == "Result" else None
+    files = ft.Text(f"{len(path)} files found") if idp == "Result" else None
     def update_remove_button_state():
         any_selected = any(selected_files_dict.values())
         remove.disabled = not any_selected
@@ -43,9 +44,17 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
         page.update()
     def update_pagination_buttons():
         if idp == "Result" and total_files[0] == 0:
-            icon.name, icon.color, icon.size = ft.Icons.CHECK, ft.Colors.GREEN_400, 200
-            files.value = "Scan Completed\nNo malware found"
-            file_list.visible = False
+            bs.content = ft.Container(
+                width=page.width,
+                height=500,
+                content=ft.Column([
+                    ft.Icon(ft.Icons.CHECK, color=ft.Colors.GREEN_400, size=200),
+                    ft.Text("Scan Completed",weight=ft.FontWeight.BOLD,size=20),
+                    ft.Text("No malware found")
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+            )
             bs.actions = []
         elif idp == "Result":
             files.value = f"{total_files[0]} files found"
@@ -141,27 +150,28 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
             for line in path:
                 f.write(f"{line}\n")
         lock_folder()
-        exclusion.clear()
-        exclusion.update(path)
-        all_files[0] = sorted(path)
+        if exclusion is not None:
+            exclusion.clear()
+            exclusion.update(path)
+        all_files[0]=sorted(path)
         selected_files_dict.clear()
         for f in all_files[0]:
-            selected_files_dict[f] = False
+            selected_files_dict[f]=False
         refresh_checkbox_list()
     def add_folder_result(e):
         if e.path:
             path.add(e.path)
             unlock_folder()
-            with open("files/quickpath.txt", "w") as f:
+            with open("files/quickpath.txt","w") as f:
                 for line in path:
                     f.write(f"{line}\n")
             lock_folder()
             file.clear()
-            file.update(scan_directory(dir_path, set()) for dir_path in path)
+            file.update(set().union(*(scan_directory(dir_path,set()) for dir_path in path)))
             all_files[0] = sorted(path)
             selected_files_dict.clear()
             for f in all_files[0]:
-                selected_files_dict[f] = False
+                selected_files_dict[f]=False
             refresh_checkbox_list()
     def add(e):
         if idp == "Exclusion List":
@@ -183,21 +193,21 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
     if len(path) == 0 and idp == "Result":
         content_column = ft.Column([
             ft.Icon(ft.Icons.CHECK, color=ft.Colors.GREEN_400, size=200),
-            ft.Text("Scan Completed", size=20),
+            ft.Text("Scan Completed",weight=ft.FontWeight.BOLD,size=20),
             ft.Text("No malware found")
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-        actions = []
+        actions=[]
     else:
-        column_controls = []
+        column_controls=[]
         if icon: column_controls.append(icon)
         if files: column_controls.append(files)
         column_controls.append(file_list)
+        column_controls.append(info)
         column_controls.append(ft.Row([prev_button, page_label, next_button]))
         content_column = ft.Column(column_controls,
                                    alignment=ft.MainAxisAlignment.CENTER,
                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-        actions = [select_all_button, add_button, remove_button] if idp == "Result" else [remove, select_all_button, ft.TextButton("Add", on_click=add)]
-
+        actions = [select_all_button, add_button, remove_button] if idp == "Result" else [remove,select_all_button,ft.TextButton("Add",on_click=add)]
     cont = ft.Container(width=page.width, height=500, content=content_column)
     bs = ft.AlertDialog(
         modal=True,
