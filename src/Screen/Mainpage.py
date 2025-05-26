@@ -161,8 +161,8 @@ def MainPage(page: ft.Page):
             with open(f"{VAULT_DIR}/exclusion.txt", "r") as file:
                 exclusionfiles=set(line.strip() for line in file)
         if os.path.exists(f"{VAULT_DIR}/exclusion.json"):
-            with open(f"{VAULT_DIR}/exclusion.json", "r") as file:
-                json.dump(list(pendrivefiles), file)
+            with open(f"{VAULT_DIR}/exclusion.json", "w") as file:
+                json.dump(list(pendrivefiles),file)
         lock_folder()
         threading.Thread(target=device_monitor, args=(page,pendrivefiles), daemon=True).start()
         threading.Thread(target=download_monitor, args=(page,exclusionfiles), daemon=True).start()

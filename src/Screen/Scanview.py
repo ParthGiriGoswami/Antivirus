@@ -8,7 +8,7 @@ def on_folder_picked_for_quick_scan(e: ft.FilePickerResultEvent, page: ft.Page,r
     if e.path:
         try:
             unlock_folder()
-            quick_file_path =r"{VAULT_DIR}/quickpath.txt"
+            quick_file_path =f"{VAULT_DIR}/quickpath.txt"
             os.makedirs(os.path.dirname(quick_file_path), exist_ok=True)
             try:
                 with open(quick_file_path, "a") as quick_file:

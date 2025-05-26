@@ -52,7 +52,7 @@ def passwordmanager(page: ft.Page,VAULT_DIR):
         enable_disable_save_button()
         page.update()
     def load_data():
-        filepath =r"{VAULT_DIR}/passwords.txt"
+        filepath =f"{VAULT_DIR}/passwords.txt"
         try:
             unlock_folder()
             with open(filepath, "rb") as f:
@@ -63,8 +63,8 @@ def passwordmanager(page: ft.Page,VAULT_DIR):
             lock_folder()
     def save_data(data):
         unlock_folder()
-        os.makedirs(r"{VAULT_DIR}", exist_ok=True)
-        with open(r"{VAULT_DIR}/passwords.txt", "wb") as f:
+        os.makedirs(f"{VAULT_DIR}", exist_ok=True)
+        with open(f"{VAULT_DIR}/passwords.txt", "wb") as f:
             pickle.dump(data, f)
         lock_folder()
     def save_password(e):
