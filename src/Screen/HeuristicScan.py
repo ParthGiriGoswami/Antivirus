@@ -1,7 +1,4 @@
-import pefile
-import math
-import magic
-import re
+import pefile,math,magic,re
 from collections import Counter
 suspicious_patterns = [
     (re.compile(rb"eval\("),1),(re.compile(rb"exec\("),1),(re.compile(rb"base64\.b64decode"),1),
@@ -53,7 +50,6 @@ def analyze_generic_file(file_path):
 def analyze_file(file_path):
     try:
         file_type = mime_detector.from_file(file_path).lower()
-
         if "x-dosexec" in file_type or "x-executable" in file_type:
             return analyze_pe_file(file_path)
         elif "script" in file_type or "text" in file_type:

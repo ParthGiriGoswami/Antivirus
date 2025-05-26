@@ -1,5 +1,13 @@
 import os,subprocess,platform,stat
-path ="files"
+def get_vault_dir():
+    if platform.system() == "Windows":
+        base = os.getenv("LOCALAPPDATA") or os.path.expanduser("~\\AppData\\Local")
+    else:
+        base = os.path.expanduser("~/.local/share")
+    vault_path = os.path.join(base, ".system_cache", ".vault")
+    os.makedirs(vault_path, exist_ok=True)
+    return vault_path
+path =get_vault_dir().replace("\\","/")
 def lock_folder():
     system = platform.system()
     if system == "Windows":

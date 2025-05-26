@@ -1,99 +1,121 @@
+import os
+import platform
+import hashlib
 from cryptography.fernet import Fernet
-import os,flet as ft
-def load_key(key_file):
-    with open(key_file, "rb") as file:
-        key=file.read()
-    return key
-def file_decryption(page:ft.Page,encrypted_file_path):
-    def handle_close(e):
-        page.close(dia)
-    if not os.path.exists(encrypted_file_path):
-        pass
-    base_name=encrypted_file_path.replace(".encrypted","")
-    key_file = f"{base_name}.key"
-    key = load_key(key_file)
-    fernet = Fernet(key)
-    with open(encrypted_file_path, "rb") as file:
-        encrypted_data = file.read()  
-    decrypted_data = fernet.decrypt(encrypted_data)
-    original_file = base_name
-    with open(original_file, "wb") as file:
-        file.write(decrypted_data)  
-    dia = ft.AlertDialog(
-        modal=True,
-        title=ft.Text("Info"),
-        content=ft.Text("File Decrypted"),
-        actions=[
-            ft.TextButton("Ok", on_click=handle_close),
-        ],
-        actions_alignment=ft.MainAxisAlignment.END,
-        on_dismiss=lambda e: page.add(
-            ft.Text("Modal dialog dismissed"),
-        ),
-    )
-    page.open(dia)
-    os.remove(encrypted_file_path)
-    os.remove(key_file)
-    return original_file
-def generate_key(file_name):
-    key_file = f"{file_name}.key"
+import flet as ft
+def key_filename(file_path,VAULT_DIR):
+    hashed = hashlib.sha256(file_path.encode('utf-8')).hexdigest()
+    return os.path.join(VAULT_DIR, f"{hashed}.bin")
+def generate_key(file_path):
+    key_path = key_filename(file_path)
     key = Fernet.generate_key()
-    with open(key_file, "wb") as file:
-        file.write(key)
-    return key_file
-def encrypt_file(file_path, key):
+    with open(key_path, "wb") as f:
+        f.write(key)
+    if platform.system() == "Windows":
+        import ctypes
+        FILE_ATTRIBUTE_READONLY = 0x01
+        ctypes.windll.kernel32.SetFileAttributesW(key_path, FILE_ATTRIBUTE_READONLY)
+    return key_path
+def load_key(file_path,VAULT_DIR):
+    key_path = key_filename(file_path,VAULT_DIR)
+    if not os.path.exists(key_path):
+        raise FileNotFoundError(f"Key file not found for {file_path}")
+    with open(key_path, "rb") as f:
+        return f.read()
+def encrypt_file(file_path,key):
     fernet = Fernet(key)
-    with open(file_path, "rb") as file:
-        file_data = file.read()  
-    encrypted_data = fernet.encrypt(file_data)  
-    encrypted_file=file_path+".encrypted"
-    with open(encrypted_file,"wb") as file:
-        file.write(encrypted_data)
-    os.remove(file_path)  
-def file_encryption(page:ft.Page,file_path):
+    with open(file_path, "rb") as f:
+        file_data = f.read()
+    encrypted_data = fernet.encrypt(file_data)
+    encrypted_file = file_path + ".encrypted"
+    with open(encrypted_file, "wb") as f:
+        f.write(encrypted_data)
+    os.remove(file_path)
+def file_encryption(page:ft.Page,file_path,VAULT_DIR):
     def handle_close(e):
         page.close(dia)
-    key_file = f"{file_path}.key"
-    if file_path.endswith(".encrypted"):
-        dia = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("Info"),
-            content=ft.Text("You have already encrypted the file"),
-            actions=[ft.TextButton("Ok", on_click=handle_close)],
-            actions_alignment=ft.MainAxisAlignment.END,
-            on_dismiss=lambda e: page.add(
-                ft.Text("Modal dialog dismissed"),
-            ),
-        )
-        page.open(dia)
-        return
-    if file_path.endswith(".key"):
+    if not os.path.exists(key_filename(file_path)):
+        generate_key(file_path)
+    try:
+        key = load_key(file_path,VAULT_DIR)
+    except Exception as e:
         dia = ft.AlertDialog(
             modal=True,
             title=ft.Text("Error"),
-            content=ft.Text("Key files cannot be encrypted."),
+            content=ft.Text(f"Failed to load key: {e}"),
             actions=[ft.TextButton("Ok", on_click=handle_close)],
             actions_alignment=ft.MainAxisAlignment.END,
-            on_dismiss=lambda e: page.add(
-                ft.Text("Modal dialog dismissed"),
-            ),
         )
         page.open(dia)
         return
-    if not os.path.exists(key_file):
-        generate_key(file_path)
-    key = load_key(key_file)
     encrypt_file(file_path, key)
     dia = ft.AlertDialog(
         modal=True,
         title=ft.Text("Success"),
-        content=ft.Text("File encrypted successfully"),
-        actions=[
-            ft.TextButton("Ok", on_click=handle_close),
-        ],
+        content=ft.Text("File encrypted successfully."),
+        actions=[ft.TextButton("Ok", on_click=handle_close)],
         actions_alignment=ft.MainAxisAlignment.END,
-        on_dismiss=lambda e: page.add(
-            ft.Text("Modal dialog dismissed"),
-        ),
     )
-    page.open(dia)  
+    page.open(dia)
+def file_decryption(page: ft.Page, encrypted_file_path,VAULT_DIR):
+    def handle_close(e):
+        page.close(dia)
+    if not os.path.exists(encrypted_file_path):
+        dia = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Error"),
+            content=ft.Text("Encrypted file not found."),
+            actions=[ft.TextButton("Ok", on_click=handle_close)],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.open(dia)
+        return
+    base_name = encrypted_file_path.replace(".encrypted", "")
+    try:
+        key = load_key(base_name,VAULT_DIR)
+    except Exception as e:
+        dia = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Error"),
+            content=ft.Text(f"Key file missing or invalid: {e}"),
+            actions=[ft.TextButton("Ok", on_click=handle_close)],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.open(dia)
+        return
+    fernet = Fernet(key)
+    with open(encrypted_file_path, "rb") as f:
+        encrypted_data = f.read()
+    try:
+        decrypted_data = fernet.decrypt(encrypted_data)
+    except Exception as e:
+        dia = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Error"),
+            content=ft.Text(f"Decryption failed: {e}"),
+            actions=[ft.TextButton("Ok", on_click=handle_close)],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.open(dia)
+        return
+    with open(base_name, "wb") as f:
+        f.write(decrypted_data)
+    dia = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Info"),
+        content=ft.Text("File decrypted successfully."),
+        actions=[ft.TextButton("Ok", on_click=handle_close)],
+        actions_alignment=ft.MainAxisAlignment.END,
+    )
+    page.open(dia)
+    os.remove(encrypted_file_path)
+    try:
+        key_path = key_filename(base_name,VAULT_DIR)
+        if os.path.exists(key_path):
+            if platform.system()=="Windows":
+                import ctypes
+                FILE_ATTRIBUTE_NORMAL = 0x80
+                ctypes.windll.kernel32.SetFileAttributesW(key_path, FILE_ATTRIBUTE_NORMAL)
+            os.remove(key_path)
+    except:
+        pass

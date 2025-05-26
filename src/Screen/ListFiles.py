@@ -1,7 +1,7 @@
-import flet as ft
+import flet as ft,os
 from Screen.Helper import lock_folder,unlock_folder
 from Screen.ScanDir import scan_directory
-def listfiles(page, idp,exclusion=None,path=None,file=None):
+def listfiles(page,VAULT_DIR,idp,exclusion=None,path=None,file=None):
     ITEMS_PER_PAGE = 500
     current_page = [0]
     all_files = [sorted(path)]
@@ -81,7 +81,7 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
         nonlocal path
         selected = {f for f, v in selected_files_dict.items() if v}
         path -= selected
-        file_path = "files/exclusion.txt" if idp == "Exclusion List" else "files/quickpath.txt"
+        file_path = f"{VAULT_DIR}/exclusion.txt" if idp == "Exclusion List" else f"{VAULT_DIR}/quickpath.txt"
         unlock_folder()
         with open(file_path, "w") as f:
             for line in path:
@@ -106,7 +106,7 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
         existing_paths = set()
         try:
             unlock_folder()
-            with open("files/exclusion.txt", "r") as f:
+            with open(f"{VAULT_DIR}/exclusion.txt", "r") as f:
                 existing_paths = set(line.strip() for line in f.readlines())
         except FileNotFoundError:
             pass
@@ -116,7 +116,7 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
         unlock_folder()
         exclusion.clear()
         exclusion.update(updated_paths)
-        with open("files/exclusion.txt", "w") as f:
+        with open(f"{VAULT_DIR}/exclusion.txt", "w") as f:
             for line in sorted(updated_paths):
                 f.write(f"{line}\n")
         lock_folder()
@@ -134,6 +134,12 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
         if not selected:
             return
         nonlocal path
+        for file in selected:
+            try:
+                os.remove(file)
+            except:
+                with open(f"{VAULT_DIR}/exclusion.txt", "w") as f:
+                    f.write(f"{file}\n")
         path -= selected
         all_files[0] = sorted(path)
         selected_files_dict.clear()
@@ -146,7 +152,7 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
             for f in e.files:
                 path.add(f.path)
         unlock_folder()
-        with open("files/exclusion.txt", "w") as f:
+        with open(f"{VAULT_DIR}/exclusion.txt", "w") as f:
             for line in path:
                 f.write(f"{line}\n")
         lock_folder()
@@ -162,7 +168,7 @@ def listfiles(page, idp,exclusion=None,path=None,file=None):
         if e.path:
             path.add(e.path)
             unlock_folder()
-            with open("files/quickpath.txt","w") as f:
+            with open(f"{VAULT_DIR}/quickpath.txt","w") as f:
                 for line in path:
                     f.write(f"{line}\n")
             lock_folder()

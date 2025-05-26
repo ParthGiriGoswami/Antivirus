@@ -3,10 +3,10 @@ from Screen.scan import Scan
 from Screen.ScanDir import scan_directory
 from Screen.Helper import lock_folder,unlock_folder
 scanned=set()
-def on_folder_picked_for_quick_scan(e: ft.FilePickerResultEvent, page: ft.Page,rule,quickfiles,quickpath,exclusionfiles):
+def on_folder_picked_for_quick_scan(e: ft.FilePickerResultEvent, page: ft.Page,rule,quickfiles,quickpath,exclusionfiles,VAULT_DIR):
     if e.path:
         try:
-            quick_file_path = "files/quickpath.txt"
+            quick_file_path =f"{VAULT_DIR}/quickpath.txt"
             os.makedirs(os.path.dirname(quick_file_path), exist_ok=True)
             try:
                 unlock_folder()
@@ -23,13 +23,13 @@ def on_folder_picked_for_quick_scan(e: ft.FilePickerResultEvent, page: ft.Page,r
         except:
             pass
         if scanned:
-            Scan(page,quickfiles,exclusionfiles,rule,False)
-def HomeView(page: ft.Page,rule,quickfiles,quickpath,exclusionfiles):
-    file_picker_for_quick_scan = ft.FilePicker(on_result=lambda e: on_folder_picked_for_quick_scan(e, page,rule,quickfiles,quickpath,exclusionfiles))
+            Scan(page,quickfiles,exclusionfiles,rule,False,VAULT_DIR)
+def HomeView(page: ft.Page,rule,quickfiles,quickpath,exclusionfiles,VAULT_DIR):
+    file_picker_for_quick_scan = ft.FilePicker(on_result=lambda e: on_folder_picked_for_quick_scan(e, page,rule,quickfiles,quickpath,exclusionfiles,VAULT_DIR))
     page.overlay.append(file_picker_for_quick_scan)
     btn1 = ft.ElevatedButton(
         "Quick scan",
-        on_click=lambda _:file_picker_for_quick_scan.get_directory_path() if not quickfiles else Scan(page,quickfiles,exclusionfiles,rule,False)
+        on_click=lambda _:file_picker_for_quick_scan.get_directory_path() if not quickfiles else Scan(page,quickfiles,exclusionfiles,rule,False,VAULT_DIR)
     )
     return ft.Container(
         expand=True,

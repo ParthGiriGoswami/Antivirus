@@ -32,7 +32,7 @@ def worker(file_queue, malware_count, compiled_rule, txt, info, progress_ring, c
             break
         except Exception:
             file_queue.task_done()
-def scan_drives(page:ft.Page,txt,info,count,files,progress_ring,malware_count,compiled_rule,bs,flag,exclusionfiles):
+def scan_drives(page:ft.Page,txt,info,count,files,progress_ring,malware_count,compiled_rule,bs,flag,exclusionfiles,VAULT_DIR):
     file_queue = Queue()
     for file in files:
         file_queue.put(file)
@@ -51,4 +51,4 @@ def scan_drives(page:ft.Page,txt,info,count,files,progress_ring,malware_count,co
         thread.join()
     progress_ring.value=100
     page.update()
-    listfiles(page,idp="Result",path=malware_count,exclusion=exclusionfiles)
+    listfiles(page,idp="Result",path=malware_count,exclusion=exclusionfiles,VAULT_DIR=VAULT_DIR)

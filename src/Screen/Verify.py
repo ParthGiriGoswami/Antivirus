@@ -2,12 +2,12 @@ import sqlite3,flet as ft,os,hashlib,hmac
 from Screen.Helper import lock_folder,unlock_folder
 def hash_value(value: str, salt: bytes):
     return hashlib.pbkdf2_hmac('sha256', value.encode(), salt, 100000)
-def file_decryptor(e: ft.FilePickerResultEvent, page: ft.Page):
+def file_decryptor(e: ft.FilePickerResultEvent, page: ft.Page,VAULT_DIR):
     if e.files and len(e.files) > 0:
         file = e.files[0].path
         if file.endswith(".encrypted"):
             from Screen.FileEncryptionDecryption import file_decryption
-            file_decryption(page, file)
+            file_decryption(page,file,VAULT_DIR)
         else:
             bs = ft.AlertDialog(
                 modal=True,
@@ -18,28 +18,28 @@ def file_decryptor(e: ft.FilePickerResultEvent, page: ft.Page):
             )
             page.open(bs)
             page.update()
-def file_encryptor(e: ft.FilePickerResultEvent, page: ft.Page):
+def file_encryptor(e: ft.FilePickerResultEvent, page: ft.Page,VAULT_DIR):
     if e.files and len(e.files) > 0:
         from Screen.FileEncryptionDecryption import file_encryption
-        file_encryption(page, e.files[0].path)
-def verify_yourself(page: ft.Page, idx: str):
+        file_encryption(page, e.files[0].path,VAULT_DIR)
+def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
     from Screen.PasswordManager import passwordmanager
     from Screen.FolderLockerUnlocker import folder_locker, folder_unlocker
     lock = ft.FilePicker(on_result=lambda e: folder_locker(e, page))
     unlock = ft.FilePicker(on_result=lambda e: folder_unlocker(e, page))
-    file_encrypt = ft.FilePicker(on_result=lambda e: file_encryptor(e, page))
-    file_decrypt = ft.FilePicker(on_result=lambda e: file_decryptor(e, page))
+    file_encrypt = ft.FilePicker(on_result=lambda e: file_encryptor(e, page,VAULT_DIR))
+    file_decrypt = ft.FilePicker(on_result=lambda e: file_decryptor(e, page,VAULT_DIR))
     page.overlay.extend([lock, unlock, file_encrypt, file_decrypt])
     def navigator():
         match idx:
-            case "Password Manager": passwordmanager(page)
+            case "Password Manager": passwordmanager(page,VAULT_DIR)
             case "Lock Folder": lock.get_directory_path()
             case "Unlock Folder": unlock.get_directory_path()
             case "File Encryption": file_encrypt.pick_files(allow_multiple=False)
             case "File Decryption": file_decrypt.pick_files(allow_multiple=False, allowed_extensions=["encrypted"])
     bs = ft.AlertDialog(modal=True,actions_alignment=ft.MainAxisAlignment.END)
     def fetch_config():
-        with sqlite3.connect("files/config.enc") as conn:
+        with sqlite3.connect(r"{VAULT_DIR}/config.enc") as conn:
             cursor = conn.cursor()
             cursor.execute('CREATE TABLE IF NOT EXISTS passwords (salt BLOB NOT NULL,password BLOB NOT NULL,question TEXT,answer BLOB)')
             cursor.execute('SELECT salt, password, question, answer FROM passwords LIMIT 1')
@@ -97,7 +97,7 @@ def verify_yourself(page: ft.Page, idx: str):
                 page.update()
                 return
             unlock_folder()
-            with sqlite3.connect("files/config.enc") as conn:
+            with sqlite3.connect(r"{VAULT_DIR}/config.enc") as conn:
                 conn.execute("UPDATE passwords SET password = ?", (hash_value(npin, salt),))
                 conn.commit()
             lock_folder()
@@ -133,7 +133,7 @@ def verify_yourself(page: ft.Page, idx: str):
             pin_hash = hash_value(pin, salt)
             answer_hash = hash_value(answer.lower(), salt)
             unlock_folder()
-            with sqlite3.connect("files/config.enc") as conn:
+            with sqlite3.connect(r"{VAULT_DIR}/config.enc") as conn:
                 conn.execute(
                     "INSERT INTO passwords (salt, password, question, answer) VALUES (?, ?, ?, ?)",
                     (salt, pin_hash, question, answer_hash)

@@ -1,4 +1,4 @@
-import flet as ft, yara, psutil, threading, os, time, asyncio
+import flet as ft, yara, psutil, threading, os, time, asyncio,json
 from Screen.Protectionview import ProtectionView
 from Screen.Settingsview import SettingsView
 from Screen.Scanview import ScanView
@@ -6,13 +6,14 @@ from Screen.Homeview import HomeView
 from Screen.Notifier import list_connected_devices, DownloadHandler
 from Screen.ScanDir import scan_directory
 from watchdog.observers import Observer
-from Screen.Helper import lock_folder,unlock_folder
+from Screen.Helper import lock_folder,unlock_folder,get_vault_dir
 from concurrent.futures import ThreadPoolExecutor
 file_lock = threading.Lock()
 quickpath = set()
 deepfiles = set()
 quickfiles = set()
 exclusionfiles=set()
+pendrivefiles=set()
 def get_drives(file):
     partitions = psutil.disk_partitions()
     drive_letters = [p.device for p in partitions if p.fstype]
@@ -26,25 +27,30 @@ def get_drives(file):
         list(executor.map(scan_drive, drive_letters))
 def MainPage(page: ft.Page):
     global quickfiles
-    yara_rule = """
+    yara_rule =r"""
          rule MalwareDetection {
-        strings:
-            $ransomware = {50 53 51 52 56 57 55 41 54 41 55 41 56 41 57}
-            $keylogger = {6A 00 68 00 30 00 00 64 FF 35 30 00 00 00}
-            $shellcode = {31 C0 50 68 2E 65 78 65 68 63 61 6C 63 54 5F 50 57 56 50 FF D0}
-            $cmd = "cmd.exe /c"
-            $ps = "powershell.exe -nop -w hidden"
-        condition:
-            filesize < 2MB and (1 of ($ransomware, $keylogger, $shellcode) and 1 of ($cmd, $ps))
-    }
+            strings:
+                $ransomware = {50 53 51 52 56 57 55 41 54 41 55 41 56 41 57}
+                $keylogger = {6A 00 68 00 30 00 00 64 FF 35 30 00 00 00}
+                $shellcode = {31 C0 50 68 2E 65 78 65 68 63 61 6C 63 54 5F 50 57 56 50 FF D0}
+                $cmd = "cmd.exe /c"
+                $ps = "powershell.exe -nop -w hidden"
+                $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+        
+            condition:
+                filesize < 2MB and (
+                    1 of ($ransomware, $keylogger, $shellcode) and 1 of ($cmd, $ps)
+                    or $eicar
+                )
+        }
     """
     compiled_rule = yara.compile(source=yara_rule)
     def get_download_dir():
         home = os.environ.get("USERPROFILE") or os.environ.get("HOME")
         return os.path.join(home, "Downloads")
     DOWNLOADS_DIR = get_download_dir()
-    def download_monitor(page):
-        handler = DownloadHandler(page, compiled_rule)
+    def download_monitor(page,exclusionfiles):
+        handler = DownloadHandler(page,compiled_rule,exclusionfiles)
         observer = Observer()
         observer.schedule(handler, path=DOWNLOADS_DIR, recursive=False)
         observer.start()
@@ -54,9 +60,9 @@ def MainPage(page: ft.Page):
         except KeyboardInterrupt:
             observer.stop()
         observer.join()
-    def device_monitor(page):
+    def device_monitor(page,pendrivefiles):
         while True:
-            list_connected_devices(page, compiled_rule)
+            list_connected_devices(page,compiled_rule,pendrivefiles)
             time.sleep(1)
     def drive_monitor():
         global quickfiles
@@ -68,8 +74,6 @@ def MainPage(page: ft.Page):
                 if temp_files != quickfiles:
                     quickfiles.clear()
                     quickfiles.update(temp_files)
-    threading.Thread(target=device_monitor, args=(page,), daemon=True).start()
-    threading.Thread(target=download_monitor, args=(page,), daemon=True).start()
     image_width = 500
     animated_image = ft.AnimatedSwitcher(
         content=ft.Image(
@@ -122,30 +126,30 @@ def MainPage(page: ft.Page):
         on_change=lambda e: change_page(e.control.selected_index),
         disabled=True
     )
+    VAULT_DIR = get_vault_dir().replace("\\","/")
     def change_page(index):
         if navigation_rail.disabled:
             return
         if index == 0:
-            view = HomeView(page,compiled_rule,quickfiles,quickpath,exclusionfiles)
+            view = HomeView(page,compiled_rule,quickfiles,quickpath,exclusionfiles,VAULT_DIR)
         elif index == 1:
-            view = ScanView(page, compiled_rule, quickfiles, quickpath, deepfiles,exclusionfiles)
+            view = ScanView(page,compiled_rule,quickfiles,quickpath,deepfiles,exclusionfiles,VAULT_DIR)
         elif index == 2:
-            view = ProtectionView(page)
+            view = ProtectionView(page,VAULT_DIR)
         else:
-            view = SettingsView(page, quickpath, quickfiles,exclusionfiles)
+            view = SettingsView(page,quickpath,quickfiles,exclusionfiles,VAULT_DIR)
         content_container.content = view
         page.update()
     def update_ui_after_scan():
         nonlocal animation_running
         navigation_rail.disabled = False
-        content_container.content = HomeView(page,compiled_rule,quickfiles,quickpath,exclusionfiles)
+        content_container.content = HomeView(page,compiled_rule,quickfiles,quickpath,exclusionfiles,VAULT_DIR)
         animation_running=False
         page.update()
     def init_scans():
-        global quickfiles,exclusionfiles
+        global quickfiles,exclusionfiles,pendrivefiles
         quickfiles.clear()
-        get_drives(deepfiles)
-        quick_scan_path = "files/quickpath.txt"
+        quick_scan_path = f"{VAULT_DIR}/quickpath.txt"
         unlock_folder()
         if os.path.exists(quick_scan_path):
             with open(quick_scan_path, 'r') as file:
@@ -153,10 +157,16 @@ def MainPage(page: ft.Page):
                     path = line.strip()
                     quickpath.add(path)
                     scan_directory(path, quickfiles)
-        if os.path.exists("files/exclusion.txt"):
-            with open("files/exclusion.txt", "r") as file:
+        if os.path.exists(f"{VAULT_DIR}/exclusion.txt"):
+            with open(f"{VAULT_DIR}/exclusion.txt", "r") as file:
                 exclusionfiles=set(line.strip() for line in file)
+        if os.path.exists(f"{VAULT_DIR}/exclusion.json"):
+            with open(f"{VAULT_DIR}/exclusion.json", "r") as file:
+                json.dump(list(pendrivefiles), file)
         lock_folder()
+        threading.Thread(target=device_monitor, args=(page,pendrivefiles), daemon=True).start()
+        threading.Thread(target=download_monitor, args=(page,exclusionfiles), daemon=True).start()
+        get_drives(deepfiles)
         update_ui_after_scan()
     threading.Thread(target=init_scans, daemon=True).start()
     page.run_task(animate_image)
