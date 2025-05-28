@@ -1,20 +1,23 @@
 import os
 import platform
 import hashlib
+from Screen.Helper import lock_folder, unlock_folder
 from cryptography.fernet import Fernet
 import flet as ft
 def key_filename(file_path,VAULT_DIR):
     hashed = hashlib.sha256(file_path.encode('utf-8')).hexdigest()
     return os.path.join(VAULT_DIR, f"{hashed}.bin")
-def generate_key(file_path):
-    key_path = key_filename(file_path)
+def generate_key(file_path,VAULT_DIR):
+    key_path = key_filename(file_path,VAULT_DIR)
     key = Fernet.generate_key()
+    unlock_folder()
     with open(key_path, "wb") as f:
         f.write(key)
     if platform.system() == "Windows":
         import ctypes
         FILE_ATTRIBUTE_READONLY = 0x01
         ctypes.windll.kernel32.SetFileAttributesW(key_path, FILE_ATTRIBUTE_READONLY)
+    lock_folder()
     return key_path
 def load_key(file_path,VAULT_DIR):
     key_path = key_filename(file_path,VAULT_DIR)
@@ -34,8 +37,8 @@ def encrypt_file(file_path,key):
 def file_encryption(page:ft.Page,file_path,VAULT_DIR):
     def handle_close(e):
         page.close(dia)
-    if not os.path.exists(key_filename(file_path)):
-        generate_key(file_path)
+    if not os.path.exists(key_filename(file_path,VAULT_DIR)):
+        generate_key(file_path,VAULT_DIR)
     try:
         key = load_key(file_path,VAULT_DIR)
     except Exception as e:
