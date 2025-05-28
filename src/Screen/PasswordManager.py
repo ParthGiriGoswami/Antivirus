@@ -2,9 +2,10 @@ import flet as ft
 import re, os, pickle, asyncio
 from cryptography.fernet import Fernet
 from Screen.Helper import lock_folder, unlock_folder
-def load_or_create_key():
+def load_or_create_key(VAULT_DIR):
+    unlock_folder()
     os.makedirs("{VAULT_DIR}", exist_ok=True)
-    key_path =r"{VAULT_DIR}/.datastore.bin"
+    key_path =f"{VAULT_DIR}/.datastore.bin"
     if not os.path.exists(key_path):
         key = Fernet.generate_key()
         with open(key_path, "wb") as f:
@@ -12,11 +13,13 @@ def load_or_create_key():
     else:
         with open(key_path, "rb") as f:
             key = f.read()
+    lock_folder()
     return key
-fernet = Fernet(load_or_create_key())
-def encrypt(data):
+def encrypt(data,VAULT_DIR):
+    fernet = Fernet(load_or_create_key(VAULT_DIR))
     return fernet.encrypt(data.encode()).decode()
-def decrypt(token):
+def decrypt(token,VAULT_DIR):
+    fernet = Fernet(load_or_create_key(VAULT_DIR))
     return fernet.decrypt(token.encode()).decode()
 def passwordmanager(page: ft.Page,VAULT_DIR):
     auto_close_task = None
@@ -70,8 +73,8 @@ def passwordmanager(page: ft.Page,VAULT_DIR):
     def save_password(e):
         site_key = site.value.strip()
         new_entry = {
-            "username": encrypt(username.value),
-            "password": encrypt(password.value)
+            "username": encrypt(username.value,VAULT_DIR),
+            "password": encrypt(password.value,VAULT_DIR)
         }
         all_data = load_data()
         all_data.setdefault(site_key, []).append(new_entry)
@@ -87,8 +90,8 @@ def passwordmanager(page: ft.Page,VAULT_DIR):
     def load_passwords_view():
         def create_credential_row(entry, site_name, entry_index):
             try:
-                original_username = decrypt(entry["username"])
-                original_password = decrypt(entry["password"])
+                original_username = decrypt(entry["username"],VAULT_DIR)
+                original_password = decrypt(entry["password"],VAULT_DIR)
             except Exception:
                 original_username = "<decryption error>"
                 original_password = "<decryption error>"
@@ -127,8 +130,8 @@ def passwordmanager(page: ft.Page,VAULT_DIR):
                 all_data = load_data()
                 if site_name in all_data and len(all_data[site_name]) > entry_index:
                     all_data[site_name][entry_index] = {
-                        "username": encrypt(user.value),
-                        "password": encrypt(passw.value)
+                        "username": encrypt(user.value,VAULT_DIR),
+                        "password": encrypt(passw.value,VAULT_DIR)
                     }
                     save_data(all_data)
                 toggle_edit(e)
