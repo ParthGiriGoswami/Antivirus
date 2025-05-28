@@ -1,8 +1,8 @@
-import flet as ft, queue, threading
+import flet as ft, queue, threading,os
 from queue import Queue
 from Screen.HeuristicScan import analyze_file
 from Screen.ListFiles import listfiles
-def worker(file_queue, malware_count, compiled_rule, txt, info, progress_ring, count, page, lock, processed_count, flag, exclusionfiles):
+def worker(file_queue, malware_count, compiled_rule, txt, info, progress_ring, count, page, lock, processed_count, flag, exclusionfiles,VAULT_DIR):
     batch_size = 100 if compiled_rule is None else 10 if count < 100 else 100 if count < 500 else 200 if count < 1000 else 800 if not flag else 700
     while not file_queue.empty():
         try:
@@ -10,7 +10,9 @@ def worker(file_queue, malware_count, compiled_rule, txt, info, progress_ring, c
             with lock:
                 processed_count[0] += 1
                 index = processed_count[0]
-            if file_path in exclusionfiles:
+            vault_path = os.path.abspath(VAULT_DIR)
+            abs_path = os.path.abspath(file_path)
+            if file_path in exclusionfiles or abs_path.startswith(vault_path + os.sep):
                 file_queue.task_done()
                 continue
             is_suspicious = compiled_rule.match(file_path) if compiled_rule else False
@@ -43,7 +45,7 @@ def scan_drives(page:ft.Page,txt,info,count,files,progress_ring,malware_count,co
     for _ in range(num_threads):
         thread = threading.Thread(
             target=worker,
-            args=(file_queue,malware_count,compiled_rule,txt,info,progress_ring,count,page,lock,processed_count,flag,exclusionfiles)
+            args=(file_queue,malware_count,compiled_rule,txt,info,progress_ring,count,page,lock,processed_count,flag,exclusionfiles,VAULT_DIR)
         )
         threads.append(thread)
         thread.start()
