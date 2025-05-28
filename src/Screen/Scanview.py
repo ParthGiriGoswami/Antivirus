@@ -1,7 +1,7 @@
 from Screen.Helper import lock_folder,unlock_folder
 import flet as ft,os
 from Screen.scan import Scan
-from Screen.Createbutton import create_custom_button
+from Screen.Createbutton import button
 from Screen.ScanDir import scan_directory
 def on_folder_picked_for_quick_scan(e: ft.FilePickerResultEvent, page: ft.Page,rule,quickfiles,quickpath,exclusionfiles,VAULT_DIR):
     scanned=set()
@@ -46,9 +46,9 @@ def ScanView(page: ft.Page,rule,quickfiles,quickpath,deepfiles,exclusionfiles,VA
         content=ft.Column(
             [
                 ft.Text(value="Scans", size=20),
-                create_custom_button(page,"Quick Scan","Quickly scans high-risk areas for threats",icon=ft.Icons.SAVED_SEARCH,on_click=lambda _:file_picker_for_quick_scan.get_directory_path() if not quickfiles else Scan(page,quickfiles,exclusionfiles,rule,False,VAULT_DIR)),
-                create_custom_button(page,"Deep Scan","A full threat inspection for your entire device",icon=ft.Icons.SCREEN_SEARCH_DESKTOP_SHARP,on_click=lambda _:Scan(page,deepfiles,exclusionfiles,rule,True,VAULT_DIR)),
-                create_custom_button(page,"Custom Scan","Allows you to scan specific folders on your device",icon=ft.Icons.DASHBOARD_CUSTOMIZE_SHARP,on_click=lambda _: file_picker_for_custom_scan.get_directory_path()),
+                button(page,"Quick Scan","Quickly scans high-risk areas for threats",icon=ft.Icons.SAVED_SEARCH,on_click=lambda _:file_picker_for_quick_scan.get_directory_path() if not quickfiles else Scan(page,quickfiles,exclusionfiles,rule,False,VAULT_DIR)),
+                button(page,"Deep Scan","A full threat inspection for your entire device",icon=ft.Icons.SCREEN_SEARCH_DESKTOP_SHARP,on_click=lambda _:Scan(page,deepfiles,exclusionfiles,rule,True,VAULT_DIR)),
+                button(page,"Custom Scan","Allows you to scan specific folders on your device",icon=ft.Icons.DASHBOARD_CUSTOMIZE_SHARP,on_click=lambda _: file_picker_for_custom_scan.get_directory_path()),
             ],
             spacing=21,
         ),
