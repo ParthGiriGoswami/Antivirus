@@ -15,6 +15,7 @@ deepfiles = set()
 quickfiles = set()
 exclusionfiles=set()
 pendrivefiles=set()
+quarantinefiles= set()
 def init_quarantine_db(VAULT_DIR):
     db_path = os.path.join(VAULT_DIR, "quarantine.db")
     os.makedirs(VAULT_DIR, exist_ok=True)
@@ -41,6 +42,16 @@ def cleanup_quarantine(VAULT_DIR):
                     pass
             conn.commit()
         lock_folder()
+    except:
+        pass
+def fetch_quarantine_records(vault_dir):
+    db_path = os.path.join(vault_dir, "quarantine.db")
+    try:
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT filename, original_path, quarantine_path, timestamp FROM quarantine")
+            for row in cursor.fetchall():
+                quarantinefiles.add(tuple(row))  
     except:
         pass
 def get_drives(file):
@@ -114,17 +125,17 @@ def MainPage(page: ft.Page):
             return
         views = [HomeView, ScanView, ProtectionView, SettingsView]
         view_args = [
-            (page, compiled_rule, quickfiles, quickpath, exclusionfiles, VAULT_DIR),
-            (page, compiled_rule, quickfiles, quickpath, deepfiles, exclusionfiles, VAULT_DIR),
+            (page, compiled_rule, quickfiles, quickpath, exclusionfiles, VAULT_DIR, quarantinefiles),
+            (page, compiled_rule, quickfiles, quickpath, deepfiles, exclusionfiles, VAULT_DIR, quarantinefiles),
             (page, VAULT_DIR),
-            (page, quickpath, quickfiles, exclusionfiles, pendrivefiles, VAULT_DIR)
+            (page, quickpath, quickfiles, exclusionfiles, pendrivefiles, VAULT_DIR, quarantinefiles)
         ]
         content_container.content = views[index](*view_args[index])
         page.update()
     def update_ui_after_scan():
         nonlocal animation_running
         navigation_rail.disabled = False
-        content_container.content = HomeView(page, compiled_rule, quickfiles, quickpath, exclusionfiles, VAULT_DIR)
+        content_container.content = HomeView(page, compiled_rule, quickfiles, quickpath, exclusionfiles, VAULT_DIR, quarantinefiles)
         animation_running = False
         page.update()
     def device_monitor():
@@ -160,7 +171,6 @@ def MainPage(page: ft.Page):
         global quickfiles, exclusionfiles, pendrivefiles
         quickfiles.clear()
         unlock_folder()
-
         quick_scan_path = os.path.join(VAULT_DIR, "quickpath.txt")
         if os.path.exists(quick_scan_path):
             with open(quick_scan_path, 'r') as f:
@@ -168,7 +178,6 @@ def MainPage(page: ft.Page):
                     path = line.strip()
                     quickpath.add(path)
                     scan_directory(path, quickfiles)
-
         exclusion_path = os.path.join(VAULT_DIR, "exclusion.txt")
         if os.path.exists(exclusion_path):
             with open(exclusion_path, 'r') as f:
@@ -184,11 +193,12 @@ def MainPage(page: ft.Page):
                 pendrivefiles = set()
         init_quarantine_db(VAULT_DIR)
         cleanup_quarantine(VAULT_DIR)
+        fetch_quarantine_records(VAULT_DIR)
         lock_folder()
         threading.Thread(target=device_monitor, daemon=True).start()
         threading.Thread(target=download_monitor, daemon=True).start()
         threading.Thread(target=cleanup_quarantine, args=(VAULT_DIR,), daemon=True).start()
-        #threading.Thread(target=drive_monitor, daemon=True).start()
+        threading.Thread(target=drive_monitor, daemon=True).start()
         get_drives(deepfiles)
         update_ui_after_scan()
     threading.Thread(target=init_scans, daemon=True).start()

@@ -1,5 +1,6 @@
 import sqlite3,flet as ft,os,hashlib,hmac
 from Screen.Helper import lock_folder,unlock_folder
+from Screen.ListFiles import listfiles
 def hash_value(value: str, salt: bytes):
     return hashlib.pbkdf2_hmac('sha256', value.encode(), salt, 100000)
 def file_decryptor(e: ft.FilePickerResultEvent, page: ft.Page,VAULT_DIR):
@@ -22,7 +23,7 @@ def file_encryptor(e: ft.FilePickerResultEvent, page: ft.Page,VAULT_DIR):
     if e.files and len(e.files) > 0:
         from Screen.FileEncryptionDecryption import file_encryption
         file_encryption(page, e.files[0].path,VAULT_DIR)
-def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
+def verify_yourself(page: ft.Page, idx: str,VAULT_DIR,files=None):
     from Screen.PasswordManager import passwordmanager
     from Screen.FolderLockerUnlocker import folder_locker, folder_unlocker
     lock = ft.FilePicker(on_result=lambda e: folder_locker(e, page))
@@ -37,9 +38,10 @@ def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
             case "Unlock Folder": unlock.get_directory_path()
             case "File Encryption": file_encrypt.pick_files(allow_multiple=False)
             case "File Decryption": file_decrypt.pick_files(allow_multiple=False, allowed_extensions=["encrypted"])
+            case "Quarantine Folder": listfiles(page,idp="Quarantine folder",path=files,VAULT_DIR=VAULT_DIR)
     bs = ft.AlertDialog(modal=True,actions_alignment=ft.MainAxisAlignment.END)
     def fetch_config():
-        with sqlite3.connect(r"{VAULT_DIR}/config.enc") as conn:
+        with sqlite3.connect(f"{VAULT_DIR}/config.enc") as conn:
             cursor = conn.cursor()
             cursor.execute('CREATE TABLE IF NOT EXISTS passwords (salt BLOB NOT NULL,password BLOB NOT NULL,question TEXT,answer BLOB)')
             cursor.execute('SELECT salt, password, question, answer FROM passwords LIMIT 1')
@@ -52,7 +54,7 @@ def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
         page.update()
     def show_question_dialog():
         salt, _, question_text, answer_hash = stored
-        answer_field = ft.TextField(label="Answer", password=True, can_reveal_password=True)
+        answer_field = ft.TextField(label="Answer", password=True, can_reveal_password=True, autofocus=True)
         def verify_answer(e):
             answer = answer_field.value.strip()
             if answer and hmac.compare_digest(hash_value(answer.lower(), salt), answer_hash):
@@ -74,7 +76,7 @@ def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
         page.update()
     def show_reset_pin_dialog(salt):
         new_pin = ft.TextField(label="New 4-digit PIN", password=True, can_reveal_password=True,
-                               max_length=4, keyboard_type=ft.KeyboardType.NUMBER,
+                               max_length=4, keyboard_type=ft.KeyboardType.NUMBER, autofocus= True,
                                input_filter=ft.InputFilter(allow=True, regex_string=r"^\d*$"))
         confirm_pin = ft.TextField(label="Confirm PIN", password=True, can_reveal_password=True,
                                    max_length=4, keyboard_type=ft.KeyboardType.NUMBER,
@@ -97,7 +99,7 @@ def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
                 page.update()
                 return
             unlock_folder()
-            with sqlite3.connect(r"{VAULT_DIR}/config.enc") as conn:
+            with sqlite3.connect(f"{VAULT_DIR}/config.enc") as conn:
                 conn.execute("UPDATE passwords SET password = ?", (hash_value(npin, salt),))
                 conn.commit()
             lock_folder()
@@ -110,7 +112,7 @@ def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
         page.update()
     def show_initial_setup_dialog():
         pin_field = ft.TextField(label="Set 4-digit PIN", password=True, can_reveal_password=True,
-                                 max_length=4, keyboard_type=ft.KeyboardType.NUMBER,
+                                 max_length=4, keyboard_type=ft.KeyboardType.NUMBER, autofocus=True,
                                  input_filter=ft.InputFilter(allow=True, regex_string=r"^\d*$"))
         question_field = ft.TextField(label="Security Question")
         answer_field = ft.TextField(label="Answer", password=True, can_reveal_password=True)
@@ -133,7 +135,7 @@ def verify_yourself(page: ft.Page, idx: str,VAULT_DIR):
             pin_hash = hash_value(pin, salt)
             answer_hash = hash_value(answer.lower(), salt)
             unlock_folder()
-            with sqlite3.connect(r"{VAULT_DIR}/config.enc") as conn:
+            with sqlite3.connect(f"{VAULT_DIR}/config.enc") as conn:
                 conn.execute(
                     "INSERT INTO passwords (salt, password, question, answer) VALUES (?, ?, ?, ?)",
                     (salt, pin_hash, question, answer_hash)
