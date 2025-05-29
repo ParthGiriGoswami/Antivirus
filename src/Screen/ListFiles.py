@@ -56,8 +56,9 @@ def listfiles(page, VAULT_DIR, idp, exclusion=None, path=None, file=None, back_c
         any_selected = any(selected_files_dict.values())
         remove.disabled = add_button.disabled = remove_button.disabled = restore.disabled = not any_selected
         page.update()
-    def on_checkbox_change(e, file_path):
-        selected_files_dict[file_path] = e.control.value
+    def on_checkbox_change(e=None, file_path=None, checkbox=None):
+        val = checkbox.value if checkbox else e.control.value
+        selected_files_dict[file_path] = val
         update_remove_button_state()
     def refresh_checkbox_list():
         total_files[0] = len(all_files[0])
@@ -66,25 +67,48 @@ def listfiles(page, VAULT_DIR, idp, exclusion=None, path=None, file=None, back_c
         if use_table:
             data_table.rows.clear()
             for i, f in enumerate(all_files[0][start:end], start=start):
-                checkbox = ft.Checkbox(
-                    value=selected_files_dict.get(f, False),
-                    on_change=lambda e, f=f: on_checkbox_change(e, f)
-                )
-                if idp=="Pendrive list":
-                    data_table.rows.append(ft.DataRow(cells=[ft.DataCell(ft.Row([checkbox, ft.Text(f[0])])),ft.DataCell(ft.Text(f[1]))]))
-                    file_list.expand=True
+                is_selected = selected_files_dict.get(f, False)
+                checkbox = ft.Checkbox(value=is_selected, on_change=lambda e, f=f: on_checkbox_change(e, file_path=f))
+                def row_select_handler(e, f=f, checkbox=checkbox):
+                    checkbox.value = not checkbox.value
+                    checkbox.update()
+                    on_checkbox_change(file_path=f, checkbox=checkbox)
+                if idp == "Pendrive list":
+                    row = ft.DataRow(
+                        selected=is_selected,
+                        on_select_changed=row_select_handler,
+                        cells=[ft.DataCell(ft.Row([checkbox, ft.Text(f[0])])), ft.DataCell(ft.Text(f[1]))]
+                    )
+                    file_list.expand = True
                 else:
-                    data_table.rows.append(ft.DataRow(cells=[ft.DataCell(ft.Row([checkbox, ft.Text(f[0],overflow="ellipsis",width=200)])),ft.DataCell(ft.Text(f[1],overflow="ellipsis",width=200)),ft.DataCell(ft.Text(f[2],overflow="ellipsis",width=200)),ft.DataCell(ft.Text(f[3],overflow="ellipsis",width=200))]))
+                    row = ft.DataRow(
+                        selected=is_selected,
+                        on_select_changed=row_select_handler,
+                        cells=[
+                            ft.DataCell(ft.Row([checkbox, ft.Text(f[0], overflow="ellipsis", width=200)])),
+                            ft.DataCell(ft.Text(f[1], overflow="ellipsis", width=200)),
+                            ft.DataCell(ft.Text(f[2], overflow="ellipsis", width=200)),
+                            ft.DataCell(ft.Text(f[3], overflow="ellipsis", width=200))
+                        ]
+                    )
+                data_table.rows.append(row)
         else:
             file_list.controls.clear()
+
             for f in all_files[0][start:end]:
-                file_list.controls.append(
-                    ft.Checkbox(
-                        label=f,
-                        value=selected_files_dict.get(f, False),
-                        on_change=lambda e, f=f: on_checkbox_change(e, f)
-                    )
+                is_checked = selected_files_dict.get(f, False)
+            
+                checkbox = ft.Checkbox(
+                    label=f,
+                    value=is_checked,
+                    on_change=lambda e, f=f: on_checkbox_change(e, f)
                 )
+                def handle_click(e, f=f, checkbox=checkbox):
+                    checkbox.value = not checkbox.value
+                    checkbox.update()
+                    on_checkbox_change(file_path=f, checkbox=checkbox)
+                file_list.controls.append(
+                    ft.Container(content=checkbox, on_click=handle_click,padding=10, border_radius=5, bgcolor=ft.Colors.TRANSPARENT, ink=True))
         if total_files[0] > 100:
             any_unchecked = any(not selected_files_dict.get(f, False) for f in all_files[0][start:end])
             select_all_button.text = "Select All" if any_unchecked else "Deselect All"
