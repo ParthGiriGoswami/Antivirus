@@ -99,17 +99,60 @@ def MainPage(page: ft.Page):
         alignment=ft.alignment.center, expand=True
     )
     content_container = ft.Container(content=loading_indicator, expand=True)
-    navigation_rail = ft.NavigationRail(
-        selected_index=0,
-        bgcolor=ft.Colors.BLUE_GREY_900,
-        destinations=[
-            ft.NavigationRailDestination(icon=ft.Icon(ft.Icons.HOME_OUTLINED, size=90), selected_icon=ft.Icon(ft.Icons.HOME, size=90), label_content=ft.Text("Home", size=20)),
-            ft.NavigationRailDestination(icon=ft.Icon(ft.Icons.SEARCH, size=90), selected_icon=ft.Icon(ft.Icons.SEARCH, size=90), label_content=ft.Text("Scan", size=20)),
-            ft.NavigationRailDestination(icon=ft.Icon(ft.Icons.SHIELD_OUTLINED, size=90), selected_icon=ft.Icon(ft.Icons.SHIELD, size=90), label_content=ft.Text("Protection", size=20)),
-            ft.NavigationRailDestination(icon=ft.Icon(ft.Icons.SETTINGS_OUTLINED, size=90), selected_icon=ft.Icon(ft.Icons.SETTINGS, size=90), label_content=ft.Text("Settings", size=20)),
-        ],
+    nav_items = [
+        {"icon": ft.Icons.HOME, "label": "Home"},
+        {"icon": ft.Icons.SEARCH, "label": "Scan"},
+        {"icon": ft.Icons.SHIELD, "label": "Protection"},
+        {"icon": ft.Icons.SETTINGS, "label": "Settings"},
+    ]
+    selected_index = 0
+    def nav_item(icon, label, selected, on_click, idx):
+        return ft.Container(
+            content=ft.Column([
+                ft.Icon(icon, size=90, color=ft.Colors.WHITE),
+                ft.Text(label, size=20, color=ft.Colors.WHITE),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            bgcolor=ft.Colors.DEEP_PURPLE_ACCENT_700 if selected else ft.Colors.GREY_900,
+            padding=10,
+            on_click=lambda e: on_click(idx),
+            margin=0,
+            data=idx,
+            expand=True,
+            width=120
+        )
+    def change_page(index):
+        nonlocal selected_index
+        if navigation_rail.disabled:
+            return
+        selected_index = index
+        views = [HomeView, ScanView, ProtectionView, SettingsView]
+        view_args = [
+            (page, compiled_rule, quickfiles, quickpath, exclusionfiles, VAULT_DIR, quarantinefiles),
+            (page, compiled_rule, quickfiles, quickpath, deepfiles, exclusionfiles, VAULT_DIR, quarantinefiles),
+            (page, VAULT_DIR),
+            (page, quickpath, quickfiles, exclusionfiles, pendrivefiles, VAULT_DIR, quarantinefiles)
+        ]
+        content_container.content = views[index](*view_args[index])
+        navigation_rail.controls.clear()
+        for idx, item in enumerate(nav_items):
+            navigation_rail.controls.append(
+                nav_item(item["icon"], item["label"], selected_index == idx, change_page, idx)
+            )
+        page.update()
+
+    navigation_rail = ft.Column(
+        controls=[],
+        spacing=0,
+        tight=True,
         expand=True,
-        on_change=lambda e: change_page(e.control.selected_index),disabled=True)
+        disabled=True
+    )
+    for idx, item in enumerate(nav_items):
+        navigation_rail.controls.append(
+            nav_item(item["icon"], item["label"], selected_index == idx, change_page, idx)
+        )
     animation_running = True
     async def animate_image():
         await asyncio.sleep(1)
@@ -120,18 +163,6 @@ def MainPage(page: ft.Page):
             grow = not grow
             animated_image.content = ft.Image(src="src/assets/icon.png", width=new_size, height=new_size, fit=ft.ImageFit.CONTAIN)
             page.update()
-    def change_page(index):
-        if navigation_rail.disabled:
-            return
-        views = [HomeView, ScanView, ProtectionView, SettingsView]
-        view_args = [
-            (page, compiled_rule, quickfiles, quickpath, exclusionfiles, VAULT_DIR, quarantinefiles),
-            (page, compiled_rule, quickfiles, quickpath, deepfiles, exclusionfiles, VAULT_DIR, quarantinefiles),
-            (page, VAULT_DIR),
-            (page, quickpath, quickfiles, exclusionfiles, pendrivefiles, VAULT_DIR, quarantinefiles)
-        ]
-        content_container.content = views[index](*view_args[index])
-        page.update()
     def update_ui_after_scan():
         nonlocal animation_running
         navigation_rail.disabled = False
@@ -142,6 +173,7 @@ def MainPage(page: ft.Page):
         while True:
             list_connected_devices(page, compiled_rule, pendrivefiles)
             time.sleep(1)
+
     def download_monitor():
         handler = DownloadHandler(page, compiled_rule, exclusionfiles)
         observer = Observer()
@@ -166,7 +198,7 @@ def MainPage(page: ft.Page):
                     deepfiles.clear()
                     deepfiles.update(temp_files)
                 previous_drive_state = current_drive_state
-            time.sleep(1)  
+            time.sleep(1)
     def init_scans():
         global quickfiles, exclusionfiles, pendrivefiles
         quickfiles.clear()
@@ -182,7 +214,6 @@ def MainPage(page: ft.Page):
         if os.path.exists(exclusion_path):
             with open(exclusion_path, 'r') as f:
                 exclusionfiles = set(line.strip() for line in f)
-
         exclusion_json_path = os.path.join(VAULT_DIR, "exclusion.json")
         if os.path.exists(exclusion_json_path):
             try:
@@ -201,11 +232,12 @@ def MainPage(page: ft.Page):
         threading.Thread(target=drive_monitor, daemon=True).start()
         get_drives(deepfiles)
         update_ui_after_scan()
+
     threading.Thread(target=init_scans, daemon=True).start()
     page.run_task(animate_image)
     return ft.View(
         route="/home",
-        controls=[ft.Row([ft.Container(navigation_rail, expand=False, width=120), content_container], expand=True)],
+        controls=[ft.Row([ft.Container(navigation_rail, expand=False, width=130), content_container], expand=True)],
         spacing=0,
         padding=0
     )

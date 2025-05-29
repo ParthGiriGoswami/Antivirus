@@ -17,6 +17,6 @@ def button(page,label,description,icon=None,on_click=None,h=105):
         style=ft.ButtonStyle(
             shape=ft.RoundedRectangleBorder(radius=8),
             alignment=ft.alignment.center,
-            bgcolor=ft.Colors.BLUE_ACCENT_700
+            bgcolor=ft.Colors.BLUE_GREY_900
         ),
     )
