@@ -1,4 +1,4 @@
-import os, platform, hashlib, flet as ft
+import os, platform, hashlib, flet as ft, ctypes
 from cryptography.fernet import Fernet
 from Screen.Helper import lock_folder, unlock_folder
 IS_WINDOWS = platform.system() == "Windows"
@@ -12,7 +12,6 @@ def generate_key(file_path, vault_dir):
     with open(key_path, "wb") as f:
         f.write(Fernet.generate_key())
     if IS_WINDOWS:
-        import ctypes
         ctypes.windll.kernel32.SetFileAttributesW(key_path, FILE_ATTRIBUTE_READONLY)
     lock_folder()
     return key_path
@@ -73,7 +72,6 @@ def file_decryption(page: ft.Page, encrypted_path, vault_dir):
         key_path = key_filename(base_path, vault_dir)
         if os.path.exists(key_path):
             if IS_WINDOWS:
-                import ctypes
                 ctypes.windll.kernel32.SetFileAttributesW(key_path, FILE_ATTRIBUTE_NORMAL)
             os.remove(key_path)
         show_dialog("Info", "File decrypted successfully.")

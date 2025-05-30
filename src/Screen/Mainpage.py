@@ -141,7 +141,6 @@ def MainPage(page: ft.Page):
                 nav_item(item["icon"], item["label"], selected_index == idx, change_page, idx)
             )
         page.update()
-
     navigation_rail = ft.Column(
         controls=[],
         spacing=0,
