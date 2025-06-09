@@ -172,7 +172,6 @@ def MainPage(page: ft.Page):
         while True:
             list_connected_devices(page, compiled_rule, pendrivefiles)
             time.sleep(1)
-
     def download_monitor():
         handler = DownloadHandler(page, compiled_rule, exclusionfiles)
         observer = Observer()
@@ -231,7 +230,6 @@ def MainPage(page: ft.Page):
         threading.Thread(target=drive_monitor, daemon=True).start()
         get_drives(deepfiles)
         update_ui_after_scan()
-
     threading.Thread(target=init_scans, daemon=True).start()
     page.run_task(animate_image)
     return ft.View(

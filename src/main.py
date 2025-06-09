@@ -8,8 +8,6 @@ def main(page: ft.Page):
             surface=ft.Colors.BLACK,background="#121212",
             on_surface=ft.Colors.WHITE,on_primary=ft.Colors.WHITE,
         ))
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     def resource_path(relative_path):
         base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
         return os.path.join(base_path, relative_path)

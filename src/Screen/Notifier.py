@@ -87,7 +87,7 @@ def scan_directory(path, compiled_rule, source_type, exclusionfiles, device_id=N
         except:
             pass
         return files
-    all_files = collect_files(path)
+    all_files = collect_files(path) if source_type=="device" else path
     def handle_file(file_path):
         try:
             if os.path.getsize(file_path) > 100 * 1024 * 1024:
@@ -99,7 +99,6 @@ def scan_directory(path, compiled_rule, source_type, exclusionfiles, device_id=N
             else:
                 if file_path in exclusionfiles:
                     return
-    
             if compiled_rule.match(file_path):
                 if source_type == "device":
                     device_malware_files.add(file_path)
@@ -110,7 +109,6 @@ def scan_directory(path, compiled_rule, source_type, exclusionfiles, device_id=N
     worker=len(all_files) if len(all_files)!=0 else 10
     with concurrent.futures.ThreadPoolExecutor(max_workers=worker) as executor:
         executor.map(handle_file, all_files)
-        
 def show_malware_overlay(page, malware_files, title_text,exclusionfiles):
     global malware_snackbar
     selected_files = set()
@@ -232,7 +230,7 @@ class DownloadHandler(FileSystemEventHandler):
     def on_created(self, event):
         if not event.is_directory:
             scan_directory(event.src_path, self.rule, "download",self.exclusion)
-            notify_results(self.page, "download",self.exclusion)
+        notify_results(self.page, "download",self.exclusion)
 def list_connected_devices(page, compiled_rule, exclusionfiles):
     global device_scanned
     partitions = psutil.disk_partitions()
